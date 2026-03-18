@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+.git/
+.gitignore
+docker-compose.yml
+Dockerfile
+.dockerignore
+social-image.png

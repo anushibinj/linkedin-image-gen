@@ -1,0 +1,58 @@
+import io
+from fastapi.testclient import TestClient
+from PIL import Image
+from main import app
+
+client = TestClient(app)
+
+def test_generate_image_success():
+    """Test that the endpoint returns a valid PNG image with all fields provided."""
+    payload = {
+        "header": "TEST HEADER",
+        "title": "Test Title",
+        "subtitle": "Test Subtitle",
+        "footer": "test footer"
+    }
+    response = client.post("/generate", json=payload)
+    
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "image/png"
+    
+    # Verify it's a valid image
+    img = Image.open(io.BytesIO(response.content))
+    assert img.size == (512, 512)
+    assert img.format == "PNG"
+
+def test_generate_image_minimal_fields():
+    """Test that the endpoint works with only a title."""
+    payload = {"title": "Only Title"}
+    response = client.post("/generate", json=payload)
+    
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "image/png"
+
+def test_generate_image_empty_fields():
+    """Test that the endpoint works with empty strings."""
+    payload = {
+        "header": "",
+        "title": "",
+        "subtitle": "",
+        "footer": ""
+    }
+    response = client.post("/generate", json=payload)
+    
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "image/png"
+
+def test_generate_image_missing_fields():
+    """Test that the endpoint works when fields are missing from JSON (Pydantic defaults)."""
+    payload = {}
+    response = client.post("/generate", json=payload)
+    
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "image/png"
+
+def test_invalid_json():
+    """Test that invalid JSON returns a 422 Unprocessable Entity."""
+    response = client.post("/generate", content="invalid json")
+    assert response.status_code == 422

@@ -29,18 +29,24 @@ def get_font(size: int):
         return ImageFont.load_default()
 
 def create_gradient(width: int, height: int):
-    """Generate a random dark linear gradient."""
-    color1 = (random.randint(10, 80), random.randint(10, 80), random.randint(10, 80))
-    color2 = (random.randint(10, 80), random.randint(10, 80), random.randint(10, 80))
+    """Generate a random dark diagonal linear gradient."""
+    # Ensure color1 and color2 are distinct enough to see the gradient
+    color1 = (random.randint(5, 30), random.randint(5, 30), random.randint(5, 30))
+    color2 = (random.randint(50, 90), random.randint(50, 90), random.randint(50, 90))
     
     base = Image.new("RGB", (width, height), color1)
     top = Image.new("RGB", (width, height), color2)
-    mask = Image.new("L", (width, height))
     
-    # Create vertical gradient mask
-    for y in range(height):
-        mask.putpixel((0, y), int(255 * (y / height)))
-    mask = mask.resize((width, height))
+    # Create a small 2x2 mask for a diagonal gradient and scale it up
+    # This is much faster than looping over every pixel in Python
+    mask = Image.new("L", (2, 2))
+    mask.putpixel((0, 0), 0)    # Top-left
+    mask.putpixel((1, 1), 255)  # Bottom-right
+    mask.putpixel((0, 1), 128)  # Bottom-left
+    mask.putpixel((1, 0), 128)  # Top-right
+    
+    # Resize to full canvas with BILINEAR to create a smooth diagonal transition
+    mask = mask.resize((width, height), resample=Image.BILINEAR)
     
     base.paste(top, (0, 0), mask)
     return base

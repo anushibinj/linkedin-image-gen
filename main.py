@@ -90,43 +90,54 @@ async def generate_image(request: ImageRequest):
     img = create_gradient(width, height)
     draw = ImageDraw.Draw(img)
     text_color = (240, 240, 240)
-    margin = 30
+    margin = 35
     safe_width = width - (margin * 2)
     
-    # 2. Draw Header
+    # 2. Pre-calculate Title and Subtitle Layouts
+    title_data = None
+    if request.title:
+        title_data = get_multiline_layout(draw, request.title, safe_width, 240, 50)
+    
+    sub_data = None
+    if request.subtitle:
+        sub_data = get_multiline_layout(draw, request.subtitle, safe_width, 140, 26)
+    
+    # 3. Calculate Vertical Centering
+    gap = 40
+    total_text_height = 0
+    if title_data:
+        total_text_height += title_data[3]
+    if title_data and sub_data:
+        total_text_height += gap
+    if sub_data:
+        total_text_height += sub_data[3]
+    
+    # Starting Y to center the whole block
+    start_y = (height - total_text_height) // 2
+    
+    # 4. Draw Header
     if request.header:
-        header_font = get_font(16)
-        if header_font.getlength(request.header) > safe_width // 2:
-             header_text = wrap_text(request.header, header_font, safe_width // 2)
-        else:
-             header_text = request.header
+        header_font = get_font(14)
+        header_text = wrap_text(request.header, header_font, safe_width // 2)
         draw.multiline_text((margin, margin), header_text, font=header_font, fill=text_color)
         
-    # 3. Draw Title
-    title_y = 160
-    if request.title:
-        wrapped_title, title_font, title_w, title_h = get_multiline_layout(
-            draw, request.title, safe_width, 220, 50
-        )
-        # Manually center horizontally
+    # 5. Draw Title
+    current_y = start_y
+    if title_data:
+        wrapped_title, title_font, title_w, title_h = title_data
         title_x = (width - title_w) // 2
         draw.multiline_text(
-            (title_x, title_y), 
+            (title_x, current_y), 
             wrapped_title, 
             font=title_font, 
             fill=text_color, 
             align="center"
         )
-        current_y = title_y + title_h + 20
-    else:
-        current_y = title_y
+        current_y += title_h + gap
 
-    # 4. Draw Subtitle
-    if request.subtitle:
-        wrapped_sub, sub_font, sub_w, sub_h = get_multiline_layout(
-            draw, request.subtitle, safe_width, 120, 26
-        )
-        # Manually center horizontally
+    # 6. Draw Subtitle
+    if sub_data:
+        wrapped_sub, sub_font, sub_w, sub_h = sub_data
         sub_x = (width - sub_w) // 2
         draw.multiline_text(
             (sub_x, current_y), 
@@ -136,7 +147,7 @@ async def generate_image(request: ImageRequest):
             align="center"
         )
 
-    # 5. Draw Footer
+    # 7. Draw Footer
     if request.footer:
         footer_font = get_font(14)
         wrapped_footer = wrap_text(request.footer, footer_font, safe_width // 2)
@@ -151,7 +162,7 @@ async def generate_image(request: ImageRequest):
             align="right"
         )
 
-    # 6. Return image
+    # 8. Return image
     img_byte_arr = io.BytesIO()
     img.save(img_byte_arr, format='PNG')
     img_byte_arr.seek(0)

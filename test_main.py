@@ -52,6 +52,23 @@ def test_generate_image_missing_fields():
     assert response.status_code == 200
     assert response.headers["content-type"] == "image/png"
 
+def test_generate_image_long_text():
+    """Test that the endpoint handles very long text (shrinking logic)."""
+    payload = {
+        "title": "This is a very very long title that should definitely trigger the font shrinking logic to prevent overflow",
+        "subtitle": "This is also a very long subtitle that should fit within the canvas width even if it is exceptionally long",
+        "header": "LONG HEADER TEXT THAT SHOULD BE SHRUNK",
+        "footer": "LONG FOOTER TEXT THAT SHOULD ALSO BE SHRUNK"
+    }
+    response = client.post("/generate", json=payload)
+    
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "image/png"
+    
+    # Verify it's still a valid image
+    img = Image.open(io.BytesIO(response.content))
+    assert img.size == (512, 512)
+
 def test_invalid_json():
     """Test that invalid JSON returns a 422 Unprocessable Entity."""
     response = client.post("/generate", content="invalid json")

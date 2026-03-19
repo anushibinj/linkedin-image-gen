@@ -16,17 +16,38 @@ class ImageRequest(BaseModel):
 
 def get_font(size: int):
     """Attempt to load a standard font, fallback to default if not found."""
-    try:
-        # Common font paths for different OS
-        font_names = ["arial.ttf", "DejaVuSans.ttf", "LiberationSans-Regular.ttf", "Verdana.ttf"]
-        for name in font_names:
-            try:
-                return ImageFont.truetype(name, size)
-            except OSError:
-                continue
-        return ImageFont.load_default()
-    except Exception:
-        return ImageFont.load_default()
+    # Common font paths/names for different OS (Windows, Linux, macOS)
+    font_names = [
+        "arial.ttf", 
+        "DejaVuSans.ttf", 
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "LiberationSans-Regular.ttf", 
+        "Verdana.ttf"
+    ]
+    for name in font_names:
+        try:
+            return ImageFont.truetype(name, size)
+        except OSError:
+            continue
+    return ImageFont.load_default()
+
+def get_fitted_font(draw: ImageDraw, text: str, max_width: int, initial_size: int):
+    """Iteratively shrink font size until text fits within max_width."""
+    size = initial_size
+    font = get_font(size)
+    
+    # If text is empty, return initial font
+    if not text:
+        return font
+        
+    while size > 10:
+        bbox = draw.textbbox((0, 0), text, font=font)
+        text_width = bbox[2] - bbox[0]
+        if text_width <= max_width:
+            break
+        size -= 2
+        font = get_font(size)
+    return font
 
 def create_gradient(width: int, height: int):
     """Generate a random dark diagonal linear gradient."""
@@ -38,7 +59,6 @@ def create_gradient(width: int, height: int):
     top = Image.new("RGB", (width, height), color2)
     
     # Create a small 2x2 mask for a diagonal gradient and scale it up
-    # This is much faster than looping over every pixel in Python
     mask = Image.new("L", (2, 2))
     mask.putpixel((0, 0), 0)    # Top-left
     mask.putpixel((1, 1), 255)  # Bottom-right
@@ -60,30 +80,28 @@ async def generate_image(request: ImageRequest):
     
     text_color = (240, 240, 240)
     margin = 20
+    safe_width = width - (margin * 2)
     
     # 2. Draw Header (Top-Left)
     if request.header:
-        header_font = get_font(16)
+        header_font = get_fitted_font(draw, request.header, safe_width // 2, 16)
         draw.text((margin, margin), request.header, font=header_font, fill=text_color)
         
     # 3. Draw Title (Centered)
-    title_font = get_font(50)
     title_y = 200 # Slightly above middle
     if request.title:
-        # Calculate horizontal center
+        title_font = get_fitted_font(draw, request.title, safe_width, 50)
         bbox = draw.textbbox((0, 0), request.title, font=title_font)
         text_width = bbox[2] - bbox[0]
         title_x = (width - text_width) // 2
         draw.text((title_x, title_y), request.title, font=title_font, fill=text_color)
-        
-        # Update title height for subtitle positioning
         title_height = bbox[3] - bbox[1]
     else:
         title_height = 0
 
     # 4. Draw Subtitle (Below Title, Centered)
     if request.subtitle:
-        subtitle_font = get_font(26)
+        subtitle_font = get_fitted_font(draw, request.subtitle, safe_width, 26)
         bbox = draw.textbbox((0, 0), request.subtitle, font=subtitle_font)
         text_width = bbox[2] - bbox[0]
         sub_x = (width - text_width) // 2
@@ -92,7 +110,8 @@ async def generate_image(request: ImageRequest):
 
     # 5. Draw Footer (Bottom-Right)
     if request.footer:
-        footer_font = get_font(16)
+        # Footer is allowed up to 60% of width
+        footer_font = get_fitted_font(draw, request.footer, int(width * 0.6), 16)
         bbox = draw.textbbox((0, 0), request.footer, font=footer_font)
         text_width = bbox[2] - bbox[0]
         text_height = bbox[3] - bbox[1]

@@ -1,11 +1,14 @@
 import io
+import os
 from typing import Optional
 
 from fastapi import FastAPI, Response
 from pydantic import BaseModel
-from themes import linkedin_theme_1
+from themes import linkedin_theme_1, twitter_theme_1
 
 app = FastAPI(title="Social Media Image Generator")
+
+DEFAULT_HANDLE = os.getenv("TWITTER_HANDLE", "@fastorial")
 
 class ImageRequest(BaseModel):
     header: Optional[str] = ""
@@ -13,13 +16,20 @@ class ImageRequest(BaseModel):
     subtitle: Optional[str] = ""
     footer: Optional[str] = ""
     theme: Optional[str] = "linkedin-theme-1"
+    user_handle: Optional[str] = None
 
 @app.post("/generate")
 async def generate_image(request: ImageRequest):
+    # Set default handle if not provided in request
+    if request.user_handle is None:
+        request.user_handle = DEFAULT_HANDLE
+
     if request.theme == "linkedin-theme-1":
         img = linkedin_theme_1(request)
+    elif request.theme == "twitter-theme-1":
+        img = twitter_theme_1(request)
     else:
-        # Fallback or additional themes
+        # Fallback
         img = linkedin_theme_1(request)
 
     # Return image

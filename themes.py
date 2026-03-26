@@ -1,4 +1,5 @@
-from PIL import ImageDraw
+import os
+from PIL import Image, ImageDraw, ImageOps
 from utils import create_gradient, get_font, wrap_text, get_multiline_layout
 
 def linkedin_theme_1(request):
@@ -78,4 +79,70 @@ def linkedin_theme_1(request):
             fill=text_color,
             align="right"
         )
+    return img
+
+def twitter_theme_1(request):
+    """
+    Twitter screenshot style theme.
+    - Black background
+    - Circular profile picture (placeholder if not found)
+    - User handle next to profile pic
+    - Title and subtitle left aligned
+    """
+    width, height = 512, 512
+    img = Image.new("RGB", (width, height), (0, 0, 0))
+    draw = ImageDraw.Draw(img)
+    margin = 40
+    text_color = (255, 255, 255)  # White text
+    secondary_text_color = (113, 118, 123)  # Twitter dark mode secondary gray
+    
+    # 1. Profile Picture
+    profile_pic_size = 60
+    profile_x, profile_y = margin, margin
+    
+    # Try to load profile.png, else use placeholder circle
+    profile_path = "profile.png"
+    if os.path.exists(profile_path):
+        try:
+            profile_img = Image.open(profile_path).convert("RGBA")
+            profile_img = ImageOps.fit(profile_img, (profile_pic_size, profile_pic_size), centering=(0.5, 0.5))
+            
+            # Create circular mask
+            mask = Image.new("L", (profile_pic_size, profile_pic_size), 0)
+            mask_draw = ImageDraw.Draw(mask)
+            mask_draw.ellipse((0, 0, profile_pic_size, profile_pic_size), fill=255)
+            
+            img.paste(profile_img, (profile_x, profile_y), mask)
+        except Exception:
+            # Fallback to placeholder circle if image is invalid
+            draw.ellipse((profile_x, profile_y, profile_x + profile_pic_size, profile_y + profile_pic_size), fill=(60, 60, 60))
+    else:
+        # Placeholder circle
+        draw.ellipse((profile_x, profile_y, profile_x + profile_pic_size, profile_y + profile_pic_size), fill=(60, 60, 60))
+        
+    # 2. User handle / ID
+    handle_font = get_font(20)
+    handle_x = profile_x + profile_pic_size + 15
+    handle_y = profile_y + (profile_pic_size // 2) - 12
+    draw.text((handle_x, handle_y), request.user_handle, font=handle_font, fill=text_color)
+    
+    # 3. Title (Paragraph 1)
+    current_y = profile_y + profile_pic_size + 30
+    safe_width = width - (margin * 2)
+    
+    if request.title:
+        title_font = get_font(28)
+        wrapped_title = wrap_text(request.title, title_font, safe_width)
+        draw.multiline_text((margin, current_y), wrapped_title, font=title_font, fill=text_color, align="left")
+        
+        # Calculate height of title to offset subtitle
+        bbox = draw.multiline_textbbox((margin, current_y), wrapped_title, font=title_font, align="left")
+        current_y = bbox[3] + 20
+        
+    # 4. Subtitle (Paragraph 2)
+    if request.subtitle:
+        subtitle_font = get_font(22)
+        wrapped_subtitle = wrap_text(request.subtitle, subtitle_font, safe_width)
+        draw.multiline_text((margin, current_y), wrapped_subtitle, font=subtitle_font, fill=secondary_text_color, align="left")
+        
     return img

@@ -80,6 +80,22 @@ def test_generate_image_with_theme():
     assert response.status_code == 200
     assert response.headers["content-type"] == "image/png"
 
+def test_generate_image_with_twitter_theme():
+    """Test that the endpoint works with the twitter theme."""
+    payload = {
+        "title": "Twitter Post Title",
+        "subtitle": "This is a subtitle for the twitter post screenshot style theme.",
+        "theme": "twitter-theme-1",
+        "user_handle": "@test_user"
+    }
+    response = client.post("/generate", json=payload)
+    
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "image/png"
+    
+    img = Image.open(io.BytesIO(response.content))
+    assert img.size == (512, 512)
+
 def test_invalid_json():
     """Test that invalid JSON returns a 422 Unprocessable Entity."""
     response = client.post("/generate", content="invalid json")

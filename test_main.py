@@ -83,10 +83,11 @@ def test_generate_image_with_theme():
 def test_generate_image_with_twitter_theme():
     """Test that the endpoint works with the twitter theme."""
     payload = {
+        "header": "Anusibi J",
         "title": "Twitter Post Title",
         "subtitle": "This is a subtitle for the twitter post screenshot style theme.",
         "theme": "twitter-theme-1",
-        "user_handle": "@test_user"
+        "footer": "@anusibinj"
     }
     response = client.post("/generate", json=payload)
     

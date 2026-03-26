@@ -85,8 +85,8 @@ def twitter_theme_1(request):
     """
     Twitter screenshot style theme.
     - Black background
-    - Circular profile picture (placeholder if not found)
-    - User handle next to profile pic
+    - Circular profile picture
+    - Profile name (request.header), verified tick, handle (request.footer)
     - Title and subtitle left aligned
     """
     width, height = 512, 512
@@ -94,7 +94,7 @@ def twitter_theme_1(request):
     draw = ImageDraw.Draw(img)
     margin = 40
     text_color = (255, 255, 255)  # White text
-    secondary_text_color = (113, 118, 123)  # Twitter dark mode secondary gray
+    secondary_text_color = (113, 118, 123)  # Twitter secondary gray
     
     # 1. Profile Picture
     profile_pic_size = 60
@@ -120,28 +120,51 @@ def twitter_theme_1(request):
         # Placeholder circle
         draw.ellipse((profile_x, profile_y, profile_x + profile_pic_size, profile_y + profile_pic_size), fill=(60, 60, 60))
         
-    # 2. User handle / ID
-    handle_font = get_font(20)
-    handle_x = profile_x + profile_pic_size + 15
-    handle_y = profile_y + (profile_pic_size // 2) - 12
-    draw.text((handle_x, handle_y), request.user_handle, font=handle_font, fill=text_color)
+    # 2. Header Row: Name, Verified Tick, Handle
+    name_font = get_font(20)
+    handle_font = get_font(18)
     
-    # 3. Title (Paragraph 1)
-    current_y = profile_y + profile_pic_size + 30
+    current_x = profile_x + profile_pic_size + 15
+    # Vertically center the text with the profile pic
+    text_base_y = profile_y + (profile_pic_size // 2) - 10
+    
+    # Profile Name
+    profile_name = request.header or "Profile Name"
+    draw.text((current_x, text_base_y), profile_name, font=name_font, fill=text_color)
+    name_width = draw.textlength(profile_name, font=name_font)
+    current_x += name_width + 5
+    
+    # Verified Tick
+    verified_path = "verified.png"
+    if os.path.exists(verified_path):
+        try:
+            verified_img = Image.open(verified_path).convert("RGBA")
+            # Resize tick to be roughly the size of the font
+            tick_size = 20
+            verified_img = verified_img.resize((tick_size, tick_size), resample=Image.LANCZOS)
+            # Paste it a bit higher to align with text middle
+            img.paste(verified_img, (int(current_x), int(text_base_y + 2)), verified_img)
+            current_x += tick_size + 5
+        except Exception:
+            pass
+            
+    # User Handle
+    handle_text = request.footer or "@user"
+    draw.text((current_x, text_base_y), handle_text, font=handle_font, fill=secondary_text_color)
+    
+    # 3. Content: Title and Subtitle
+    content_y = profile_y + profile_pic_size + 30
     safe_width = width - (margin * 2)
     content_font = get_font(28)
     
     if request.title:
         wrapped_title = wrap_text(request.title, content_font, safe_width)
-        draw.multiline_text((margin, current_y), wrapped_title, font=content_font, fill=text_color, align="left")
+        draw.multiline_text((margin, content_y), wrapped_title, font=content_font, fill=text_color, align="left")
+        bbox = draw.multiline_textbbox((margin, content_y), wrapped_title, font=content_font, align="left")
+        content_y = bbox[3] + 20
         
-        # Calculate height of title to offset subtitle
-        bbox = draw.multiline_textbbox((margin, current_y), wrapped_title, font=content_font, align="left")
-        current_y = bbox[3] + 20
-        
-    # 4. Subtitle (Paragraph 2)
     if request.subtitle:
         wrapped_subtitle = wrap_text(request.subtitle, content_font, safe_width)
-        draw.multiline_text((margin, current_y), wrapped_subtitle, font=content_font, fill=text_color, align="left")
+        draw.multiline_text((margin, content_y), wrapped_subtitle, font=content_font, fill=text_color, align="left")
         
     return img

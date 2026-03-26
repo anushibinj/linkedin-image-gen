@@ -16,13 +16,12 @@ class ImageRequest(BaseModel):
     subtitle: Optional[str] = ""
     footer: Optional[str] = ""
     theme: Optional[str] = "linkedin-theme-1"
-    user_handle: Optional[str] = None
 
 @app.post("/generate")
 async def generate_image(request: ImageRequest):
-    # Set default handle if not provided in request
-    if request.user_handle is None:
-        request.user_handle = DEFAULT_HANDLE
+    # Set default handle if footer is empty and theme is twitter-theme-1
+    if request.theme == "twitter-theme-1" and not request.footer:
+        request.footer = DEFAULT_HANDLE
 
     if request.theme == "linkedin-theme-1":
         img = linkedin_theme_1(request)

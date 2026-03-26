@@ -129,20 +129,19 @@ def twitter_theme_1(request):
     # 3. Title (Paragraph 1)
     current_y = profile_y + profile_pic_size + 30
     safe_width = width - (margin * 2)
+    content_font = get_font(28)
     
     if request.title:
-        title_font = get_font(28)
-        wrapped_title = wrap_text(request.title, title_font, safe_width)
-        draw.multiline_text((margin, current_y), wrapped_title, font=title_font, fill=text_color, align="left")
+        wrapped_title = wrap_text(request.title, content_font, safe_width)
+        draw.multiline_text((margin, current_y), wrapped_title, font=content_font, fill=text_color, align="left")
         
         # Calculate height of title to offset subtitle
-        bbox = draw.multiline_textbbox((margin, current_y), wrapped_title, font=title_font, align="left")
+        bbox = draw.multiline_textbbox((margin, current_y), wrapped_title, font=content_font, align="left")
         current_y = bbox[3] + 20
         
     # 4. Subtitle (Paragraph 2)
     if request.subtitle:
-        subtitle_font = get_font(22)
-        wrapped_subtitle = wrap_text(request.subtitle, subtitle_font, safe_width)
-        draw.multiline_text((margin, current_y), wrapped_subtitle, font=subtitle_font, fill=secondary_text_color, align="left")
+        wrapped_subtitle = wrap_text(request.subtitle, content_font, safe_width)
+        draw.multiline_text((margin, current_y), wrapped_subtitle, font=content_font, fill=text_color, align="left")
         
     return img

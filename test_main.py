@@ -69,6 +69,17 @@ def test_generate_image_long_text():
     img = Image.open(io.BytesIO(response.content))
     assert img.size == (512, 512)
 
+def test_generate_image_with_theme():
+    """Test that the endpoint works with a specific theme."""
+    payload = {
+        "title": "Theme Test",
+        "theme": "linkedin-theme-1"
+    }
+    response = client.post("/generate", json=payload)
+    
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "image/png"
+
 def test_invalid_json():
     """Test that invalid JSON returns a 422 Unprocessable Entity."""
     response = client.post("/generate", content="invalid json")

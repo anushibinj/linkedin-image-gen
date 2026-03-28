@@ -259,9 +259,10 @@ def ios_messages_theme_1(request):
         draw.multiline_text((bubble_x + 15, current_y + 10), wrapped_text, font=content_font, fill=(255, 255, 255))
         
         # Receiver Profile
-        receiver_img = "profile_receiver.png"
-        if not os.path.exists(receiver_img):
-            receiver_img = generate_random_profile_picture()
+        receiver_img = generate_random_profile_picture()
+        if receiver_img is None:
+            # Fallback to local file
+            receiver_img = "profile_receiver.png"
             
         draw_circular_profile(img, receiver_img, (margin, current_y + bubble_h - profile_size), profile_size)
 

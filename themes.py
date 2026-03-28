@@ -228,7 +228,7 @@ def ios_messages_theme_1(request):
         text_h = bbox[3] - bbox[1]
         
         bubble_w = text_w + 30 * SCALE_FACTOR
-        bubble_h = text_h + 20 * SCALE_FACTOR
+        bubble_h = text_h + 30 * SCALE_FACTOR
         bubble_x = width - margin - profile_size - 10 * SCALE_FACTOR - bubble_w
         
         draw.rounded_rectangle(
@@ -249,7 +249,7 @@ def ios_messages_theme_1(request):
         text_h = bbox[3] - bbox[1]
         
         bubble_w = text_w + 30 * SCALE_FACTOR
-        bubble_h = text_h + 20 * SCALE_FACTOR
+        bubble_h = text_h + 30 * SCALE_FACTOR
         bubble_x = margin + profile_size + 10 * SCALE_FACTOR
         
         draw.rounded_rectangle(

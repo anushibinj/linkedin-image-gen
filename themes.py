@@ -5,31 +5,35 @@ from utils import create_gradient, get_font, wrap_text, get_multiline_layout, ge
 
 logger = logging.getLogger(__name__)
 
+SCALE_FACTOR = 2
+BASE_SIZE = 512
+SIZE = BASE_SIZE * SCALE_FACTOR
+
 def linkedin_theme_1(request):
     logger.info("Generating image with theme: linkedin-theme-1")
     # 1. Create Canvas
-    width, height = 512, 512
+    width, height = SIZE, SIZE
     logger.debug(f"Creating canvas of size {width}x{height}")
     img = create_gradient(width, height)
     draw = ImageDraw.Draw(img)
     text_color = (240, 240, 240)
-    margin = 35
+    margin = 35 * SCALE_FACTOR
     safe_width = width - (margin * 2)
     
     # 2. Pre-calculate Title and Subtitle Layouts
     title_data = None
     if request.title:
         logger.debug("Calculating layout for title")
-        title_data = get_multiline_layout(draw, request.title, safe_width, 240, 50)
+        title_data = get_multiline_layout(draw, request.title, safe_width, 240 * SCALE_FACTOR, 50 * SCALE_FACTOR)
     
     sub_data = None
     if request.subtitle:
         logger.debug("Calculating layout for subtitle")
-        sub_data = get_multiline_layout(draw, request.subtitle, safe_width, 140, 26)
+        sub_data = get_multiline_layout(draw, request.subtitle, safe_width, 140 * SCALE_FACTOR, 26 * SCALE_FACTOR)
     
     # 3. Calculate Vertical Centering
     logger.debug("Calculating vertical centering")
-    gap = 40
+    gap = 40 * SCALE_FACTOR
     total_text_height = 0
     if title_data:
         total_text_height += title_data[3]
@@ -43,7 +47,7 @@ def linkedin_theme_1(request):
     # 4. Draw Header
     if request.header:
         logger.debug(f"Drawing header: {request.header}")
-        header_font = get_font(14)
+        header_font = get_font(14 * SCALE_FACTOR)
         header_text = wrap_text(request.header, header_font, safe_width // 2)
         draw.multiline_text((margin, margin), header_text, font=header_font, fill=text_color)
         
@@ -78,7 +82,7 @@ def linkedin_theme_1(request):
     # 7. Draw Footer
     if request.footer:
         logger.debug(f"Drawing footer: {request.footer}")
-        footer_font = get_font(14)
+        footer_font = get_font(14 * SCALE_FACTOR)
         wrapped_footer = wrap_text(request.footer, footer_font, safe_width // 2)
         bbox = draw.multiline_textbbox((0, 0), wrapped_footer, font=footer_font, align="right")
         f_w = bbox[2] - bbox[0]
@@ -95,40 +99,40 @@ def linkedin_theme_1(request):
 
 def twitter_theme_1(request):
     logger.info("Generating image with theme: twitter-theme-1")
-    width, height = 512, 512
+    width, height = SIZE, SIZE
     logger.debug(f"Creating canvas of size {width}x{height} (Black background)")
     img = Image.new("RGB", (width, height), (0, 0, 0))
     draw = ImageDraw.Draw(img)
-    margin = 40
+    margin = 40 * SCALE_FACTOR
     text_color = (255, 255, 255)
     secondary_text_color = (113, 118, 123)
     
     # 1. Profile Picture
     logger.debug("Handling profile picture")
-    profile_pic_size = 60
+    profile_pic_size = 60 * SCALE_FACTOR
     profile_x, profile_y = margin, margin
     draw_circular_profile(img, "profile.png", (profile_x, profile_y), profile_pic_size)
         
     # 2. Header Row: Name, Verified Tick, Handle
     logger.debug("Drawing header row (name, tick, handle)")
-    name_font = get_font(20)
-    handle_font = get_font(18)
-    current_x = profile_x + profile_pic_size + 15
-    text_base_y = profile_y + (profile_pic_size // 2) - 10
+    name_font = get_font(20 * SCALE_FACTOR)
+    handle_font = get_font(18 * SCALE_FACTOR)
+    current_x = profile_x + profile_pic_size + 15 * SCALE_FACTOR
+    text_base_y = profile_y + (profile_pic_size // 2) - 10 * SCALE_FACTOR
     
     profile_name = request.header or "Profile Name"
     draw.text((current_x, text_base_y), profile_name, font=name_font, fill=text_color)
     name_width = draw.textlength(profile_name, font=name_font)
-    current_x += name_width + 5
+    current_x += name_width + 5 * SCALE_FACTOR
     
     verified_path = "verified.png"
     if os.path.exists(verified_path):
         try:
             verified_img = Image.open(verified_path).convert("RGBA")
-            tick_size = 20
-            verified_img = verified_img.resize((tick_size, tick_size), resample=Image.LANCZOS)
-            img.paste(verified_img, (int(current_x), int(text_base_y + 2)), verified_img)
-            current_x += tick_size + 5
+            tick_size = 20 * SCALE_FACTOR
+            verified_img = verified_img.resize((int(tick_size), int(tick_size)), resample=Image.LANCZOS)
+            img.paste(verified_img, (int(current_x), int(text_base_y + 2 * SCALE_FACTOR)), verified_img)
+            current_x += tick_size + 5 * SCALE_FACTOR
         except Exception as e:
             logger.error(f"Error drawing verified tick: {e}")
             
@@ -137,15 +141,15 @@ def twitter_theme_1(request):
     
     # 3. Content: Title and Subtitle
     logger.debug("Drawing main content (title and subtitle)")
-    current_y = profile_y + profile_pic_size + 30
+    current_y = profile_y + profile_pic_size + 30 * SCALE_FACTOR
     safe_width = width - (margin * 2)
-    content_font = get_font(28)
+    content_font = get_font(28 * SCALE_FACTOR)
     
     if request.title:
         wrapped_title = wrap_text(request.title, content_font, safe_width)
         draw.multiline_text((margin, current_y), wrapped_title, font=content_font, fill=text_color, align="left")
         bbox = draw.multiline_textbbox((margin, current_y), wrapped_title, font=content_font, align="left")
-        current_y = bbox[3] + 20
+        current_y = bbox[3] + 20 * SCALE_FACTOR
         
     if request.subtitle:
         wrapped_subtitle = wrap_text(request.subtitle, content_font, safe_width)
@@ -177,11 +181,11 @@ def draw_circular_profile(img, path_or_image, pos, size):
     if profile_img:
         try:
             profile_img = profile_img.convert("RGBA")
-            profile_img = ImageOps.fit(profile_img, (size, size), centering=(0.5, 0.5))
-            mask = Image.new("L", (size, size), 0)
+            profile_img = ImageOps.fit(profile_img, (int(size), int(size)), centering=(0.5, 0.5))
+            mask = Image.new("L", (int(size), int(size)), 0)
             mask_draw = ImageDraw.Draw(mask)
-            mask_draw.ellipse((0, 0, size, size), fill=255)
-            img.paste(profile_img, (x, y), mask)
+            mask_draw.ellipse((0, 0, int(size), int(size)), fill=255)
+            img.paste(profile_img, (int(x), int(y)), mask)
             logger.debug("Successfully drew circular profile picture")
             return
         except Exception as e:
@@ -192,14 +196,14 @@ def draw_circular_profile(img, path_or_image, pos, size):
 
 def ios_messages_theme_1(request):
     logger.info("Generating image with theme: ios-messages-1")
-    width, height = 512, 512
+    width, height = SIZE, SIZE
     logger.debug(f"Creating canvas of size {width}x{height} (Black background)")
     img = Image.new("RGB", (width, height), (0, 0, 0))
     draw = ImageDraw.Draw(img)
-    margin = 30
+    margin = 30 * SCALE_FACTOR
     safe_width = width - (margin * 2)
     bubble_max_width = int(safe_width * 0.7)
-    profile_size = 35
+    profile_size = 35 * SCALE_FACTOR
     
     ios_blue = (0, 122, 255)
     ios_dark_grey = (38, 38, 41)
@@ -207,52 +211,52 @@ def ios_messages_theme_1(request):
     # 1. Header (Receiver Name)
     if request.header:
         logger.debug(f"Drawing header (receiver name): {request.header}")
-        header_font = get_font(18)
+        header_font = get_font(18 * SCALE_FACTOR)
         bbox = draw.textbbox((0, 0), request.header, font=header_font)
         h_w = bbox[2] - bbox[0]
         draw.text(((width - h_w) // 2, margin), request.header, font=header_font, fill=(255, 255, 255))
     
-    current_y = margin + 50
-    content_font = get_font(20)
+    current_y = margin + 50 * SCALE_FACTOR
+    content_font = get_font(20 * SCALE_FACTOR)
     
     # 2. Sender Message (Title) -> Right Aligned
     if request.title:
         logger.debug(f"Drawing sender message bubble: {request.title[:20]}...")
-        wrapped_text = wrap_text(request.title, content_font, bubble_max_width - 30)
+        wrapped_text = wrap_text(request.title, content_font, bubble_max_width - 30 * SCALE_FACTOR)
         bbox = draw.multiline_textbbox((0, 0), wrapped_text, font=content_font)
         text_w = bbox[2] - bbox[0]
         text_h = bbox[3] - bbox[1]
         
-        bubble_w = text_w + 30
-        bubble_h = text_h + 20
-        bubble_x = width - margin - profile_size - 10 - bubble_w
+        bubble_w = text_w + 30 * SCALE_FACTOR
+        bubble_h = text_h + 20 * SCALE_FACTOR
+        bubble_x = width - margin - profile_size - 10 * SCALE_FACTOR - bubble_w
         
         draw.rounded_rectangle(
             (bubble_x, current_y, bubble_x + bubble_w, current_y + bubble_h),
-            radius=15, fill=ios_blue
+            radius=15 * SCALE_FACTOR, fill=ios_blue
         )
-        draw.multiline_text((bubble_x + 15, current_y + 10), wrapped_text, font=content_font, fill=(255, 255, 255))
+        draw.multiline_text((bubble_x + 15 * SCALE_FACTOR, current_y + 10 * SCALE_FACTOR), wrapped_text, font=content_font, fill=(255, 255, 255))
         
         draw_circular_profile(img, "profile.png", (width - margin - profile_size, current_y + bubble_h - profile_size), profile_size)
-        current_y += bubble_h + 30
+        current_y += bubble_h + 30 * SCALE_FACTOR
         
     # 3. Receiver Message (Subtitle) -> Left Aligned
     if request.subtitle:
         logger.debug(f"Drawing receiver message bubble: {request.subtitle[:20]}...")
-        wrapped_text = wrap_text(request.subtitle, content_font, bubble_max_width - 30)
+        wrapped_text = wrap_text(request.subtitle, content_font, bubble_max_width - 30 * SCALE_FACTOR)
         bbox = draw.multiline_textbbox((0, 0), wrapped_text, font=content_font)
         text_w = bbox[2] - bbox[0]
         text_h = bbox[3] - bbox[1]
         
-        bubble_w = text_w + 30
-        bubble_h = text_h + 20
-        bubble_x = margin + profile_size + 10
+        bubble_w = text_w + 30 * SCALE_FACTOR
+        bubble_h = text_h + 20 * SCALE_FACTOR
+        bubble_x = margin + profile_size + 10 * SCALE_FACTOR
         
         draw.rounded_rectangle(
             (bubble_x, current_y, bubble_x + bubble_w, current_y + bubble_h),
-            radius=15, fill=ios_dark_grey
+            radius=15 * SCALE_FACTOR, fill=ios_dark_grey
         )
-        draw.multiline_text((bubble_x + 15, current_y + 10), wrapped_text, font=content_font, fill=(255, 255, 255))
+        draw.multiline_text((bubble_x + 15 * SCALE_FACTOR, current_y + 10 * SCALE_FACTOR), wrapped_text, font=content_font, fill=(255, 255, 255))
         
         logger.info("Fetching receiver profile picture")
         receiver_img = generate_random_profile_picture()
@@ -265,7 +269,7 @@ def ios_messages_theme_1(request):
     # 4. Footer
     if request.footer:
         logger.debug(f"Drawing footer: {request.footer}")
-        footer_font = get_font(12)
+        footer_font = get_font(12 * SCALE_FACTOR)
         bbox = draw.textbbox((0, 0), request.footer, font=footer_font)
         f_w = bbox[2] - bbox[0]
         f_h = bbox[3] - bbox[1]

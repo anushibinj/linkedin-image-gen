@@ -20,7 +20,7 @@ def test_generate_image_success():
     
     # Verify it's a valid image
     img = Image.open(io.BytesIO(response.content))
-    assert img.size == (512, 512)
+    assert img.size == (1024, 1024)
     assert img.format == "PNG"
 
 def test_generate_image_minimal_fields():
@@ -67,7 +67,7 @@ def test_generate_image_long_text():
     
     # Verify it's still a valid image
     img = Image.open(io.BytesIO(response.content))
-    assert img.size == (512, 512)
+    assert img.size == (1024, 1024)
 
 def test_generate_image_with_theme():
     """Test that the endpoint works with a specific theme."""
@@ -95,7 +95,7 @@ def test_generate_image_with_twitter_theme():
     assert response.headers["content-type"] == "image/png"
     
     img = Image.open(io.BytesIO(response.content))
-    assert img.size == (512, 512)
+    assert img.size == (1024, 1024)
 
 def test_generate_image_with_ios_theme():
     """Test that the endpoint works with the ios-messages-1 theme."""
@@ -111,7 +111,7 @@ def test_generate_image_with_ios_theme():
     assert response.headers["content-type"] == "image/png"
     
     img = Image.open(io.BytesIO(response.content))
-    assert img.size == (512, 512)
+    assert img.size == (1024, 1024)
 
 def test_invalid_json():
     """Test that invalid JSON returns a 422 Unprocessable Entity."""

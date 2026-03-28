@@ -49,7 +49,7 @@ async def generate_image(request: ImageRequest):
     # Return image
     logger.debug("Saving image to byte array for response")
     img_byte_arr = io.BytesIO()
-    img.save(img_byte_arr, format='PNG')
+    img.save(img_byte_arr, format='PNG', dpi=(300, 300))
     img_byte_arr.seek(0)
     
     logger.info("Successfully generated image and returning response")

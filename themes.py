@@ -265,4 +265,12 @@ def ios_messages_theme_1(request):
             
         draw_circular_profile(img, receiver_img, (margin, current_y + bubble_h - profile_size), profile_size)
 
+    # 4. Footer
+    if request.footer:
+        footer_font = get_font(12)
+        bbox = draw.textbbox((0, 0), request.footer, font=footer_font)
+        f_w = bbox[2] - bbox[0]
+        f_h = bbox[3] - bbox[1]
+        draw.text((width - margin - f_w, height - margin - f_h), request.footer, font=footer_font, fill=(113, 118, 123))
+
     return img

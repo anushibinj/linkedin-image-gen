@@ -4,7 +4,7 @@ from typing import Optional
 
 from fastapi import FastAPI, Response
 from pydantic import BaseModel
-from themes import linkedin_theme_1, twitter_theme_1
+from themes import linkedin_theme_1, twitter_theme_1, ios_messages_theme_1
 
 app = FastAPI(title="Social Media Image Generator")
 
@@ -27,6 +27,8 @@ async def generate_image(request: ImageRequest):
         img = linkedin_theme_1(request)
     elif request.theme == "twitter-theme-1":
         img = twitter_theme_1(request)
+    elif request.theme == "ios-messages-1":
+        img = ios_messages_theme_1(request)
     else:
         # Fallback
         img = linkedin_theme_1(request)

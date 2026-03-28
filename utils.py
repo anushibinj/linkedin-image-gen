@@ -1,5 +1,30 @@
 import random
+import io
+import httpx
+import time
 from PIL import Image, ImageDraw, ImageFont
+
+def generate_random_profile_picture():
+    """Fetch a random profile picture from thispersondoesnotexist.com with retries."""
+    url = "https://thispersondoesnotexist.com/"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+    }
+    
+    for attempt in range(3):
+        try:
+            # Wait longer (1 minute) for the response
+            response = httpx.get(url, headers=headers, follow_redirects=True, timeout=60.0)
+            if response.status_code == 200:
+                return Image.open(io.BytesIO(response.content))
+        except Exception as e:
+            print(f"Attempt {attempt + 1} failed to fetch profile picture: {e}")
+        
+        if attempt < 2:
+            # Wait another minute and try again
+            time.sleep(60)
+            
+    return None
 
 def get_font(size: int):
     """Attempt to load a standard font, fallback to default if not found."""

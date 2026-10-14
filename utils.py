@@ -13,7 +13,11 @@ def generate_random_profile_picture():
     """Fetch a random profile picture from thispersondoesnotexist.com with retries."""
     url = "https://thispersondoesnotexist.com/"
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Accept": "image/jpeg,image/png,image/*;q=0.8,*/*;q=0.5",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Cache-Control": "no-cache",
+        "Pragma": "no-cache",
     }
     
     logger.info("Starting to fetch random profile picture from thispersondoesnotexist.com")
@@ -23,16 +27,29 @@ def generate_random_profile_picture():
             # Wait longer (1 minute) for the response
             response = httpx.get(url, headers=headers, follow_redirects=True, timeout=60.0)
             if response.status_code == 200:
-                logger.info(f"Successfully fetched random profile picture on attempt {attempt + 1}")
-                return Image.open(io.BytesIO(response.content))
+                content_type = response.headers.get("content-type", "")
+                try:
+                    img = Image.open(io.BytesIO(response.content))
+                    img.load()  # Fully decode now so a bad payload fails here, not later
+                except Exception as e:
+                    # A 200 that isn't an image is usually an anti-bot/challenge page
+                    logger.error(
+                        f"Attempt {attempt + 1}: 200 OK but body is not a decodable image "
+                        f"(content-type={content_type!r}, {len(response.content)} bytes, "
+                        f"starts with {response.content[:60]!r}): {e}"
+                    )
+                else:
+                    logger.info(f"Successfully fetched random profile picture on attempt {attempt + 1}")
+                    return img
             else:
                 logger.warning(f"Attempt {attempt + 1} failed with status code: {response.status_code}")
         except Exception as e:
             logger.error(f"Attempt {attempt + 1} failed with error: {e}")
         
         if attempt < 2:
-            logger.info("Waiting 60 seconds before next attempt...")
-            time.sleep(60)
+            delay = 2 ** (attempt + 1)
+            logger.info(f"Waiting {delay} seconds before next attempt...")
+            time.sleep(delay)
             
     logger.error("Failed to fetch random profile picture after 3 attempts.")
     return None

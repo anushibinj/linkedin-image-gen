@@ -11,6 +11,10 @@ logger = logging.getLogger(__name__)
 
 def generate_random_profile_picture():
     """Fetch a random profile picture from thispersondoesnotexist.com with retries."""
+    # DO NOT change this URL back to the root "https://thispersondoesnotexist.com/".
+    # The root returns an HTML page with the image embedded in it (200 OK, not an image),
+    # which makes Image.open fail with "cannot identify image file". The
+    # /random-person.jpeg endpoint returns the raw JPEG, a new random face on every request.
     url = "https://thispersondoesnotexist.com/random-person.jpeg"
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
@@ -28,6 +32,8 @@ def generate_random_profile_picture():
             response = httpx.get(url, headers=headers, follow_redirects=True, timeout=60.0)
             if response.status_code == 200:
                 content_type = response.headers.get("content-type", "")
+                # Keep this decode check: a 200 response is not guaranteed to be an image,
+                # and the diagnostic logging below is what exposed the HTML-vs-JPEG issue.
                 try:
                     img = Image.open(io.BytesIO(response.content))
                     img.load()  # Fully decode now so a bad payload fails here, not later

@@ -113,6 +113,24 @@ def test_generate_image_with_ios_theme():
     img = Image.open(io.BytesIO(response.content))
     assert img.size == (1024, 1024)
 
+def test_generate_image_with_ios_light_theme():
+    """Test that the endpoint works with the ios-messages-2-light-mode theme."""
+    payload = {
+        "header": "Receiver Name",
+        "title": "Sender message right aligned",
+        "subtitle": "Receiver message left aligned",
+        "footer": "@anusibinj",
+        "theme": "ios-messages-2-light-mode"
+    }
+    response = client.post("/generate", json=payload)
+    
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "image/png"
+    
+    img = Image.open(io.BytesIO(response.content))
+    assert img.size == (1024, 1024)
+    assert img.convert("RGB").getpixel((5, 5)) == (255, 255, 255)
+
 def test_invalid_json():
     """Test that invalid JSON returns a 422 Unprocessable Entity."""
     response = client.post("/generate", content="invalid json")

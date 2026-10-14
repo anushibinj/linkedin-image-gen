@@ -39,6 +39,7 @@ A high-performance, containerized Python microservice built with **FastAPI** and
 ### Prerequisites
 
 - Python 3.11+
+- [uv](https://docs.astral.sh/uv/)
 - Docker (optional)
 
 ### Local Installation
@@ -51,12 +52,12 @@ A high-performance, containerized Python microservice built with **FastAPI** and
 
 2. **Install dependencies:**
    ```bash
-   pip install -r requirements.txt
+   uv sync
    ```
 
 3. **Run the server:**
    ```bash
-   python main.py
+   uv run python main.py
    ```
    The API will be available at `http://localhost:8000`.
 

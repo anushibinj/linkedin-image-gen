@@ -5,7 +5,7 @@ from typing import Optional
 
 from fastapi import FastAPI, Response
 from pydantic import BaseModel
-from themes import linkedin_theme_1, twitter_theme_1, ios_messages_theme_1
+from themes import linkedin_theme_1, twitter_theme_1, ios_messages_theme_1, ios_messages_theme_2_light_mode
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -39,6 +39,8 @@ async def generate_image(request: ImageRequest):
             img = twitter_theme_1(request)
         elif request.theme == "ios-messages-1":
             img = ios_messages_theme_1(request)
+        elif request.theme == "ios-messages-2-light-mode":
+            img = ios_messages_theme_2_light_mode(request)
         else:
             logger.warning(f"Unknown theme requested: {request.theme}. Falling back to linkedin-theme-1.")
             img = linkedin_theme_1(request)

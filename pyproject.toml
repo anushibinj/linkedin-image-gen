@@ -1,0 +1,21 @@
+[project]
+name = "linkedin-image-gen"
+version = "0.1.0"
+description = "FastAPI service that generates social media images"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "Pillow",
+    "python-multipart",
+]
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "httpx",
+]
+
+[tool.uv]
+package = false

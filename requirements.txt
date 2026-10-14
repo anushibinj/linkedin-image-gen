@@ -1,6 +1,0 @@
-fastapi
-uvicorn
-Pillow
-python-multipart
-pytest
-httpx

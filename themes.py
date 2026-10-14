@@ -287,3 +287,16 @@ def ios_messages_theme_1(request):
         "receiver_text": (255, 255, 255),
         "footer_text": (113, 118, 123),
     })
+
+
+def ios_messages_theme_2_light_mode(request):
+    """iOS Messages, light mode."""
+    return _ios_messages_theme(request, "ios-messages-2-light-mode", {
+        "background": (255, 255, 255),      # #FFFFFF
+        "header_text": (0, 0, 0),           # #000000
+        "sender_bubble": (65, 178, 251),    # #41B2FB
+        "sender_text": (203, 234, 254),     # #CBEAFE
+        "receiver_bubble": (233, 233, 234), # #E9E9EA
+        "receiver_text": (30, 30, 30),      # #1E1E1E
+        "footer_text": (183, 183, 185),     # #B7B7B9
+    })

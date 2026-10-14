@@ -17,20 +17,25 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Set the working directory in the container
 WORKDIR /app
 
-# Copy the requirements file into the container
-COPY requirements.txt .
+# Install uv from the official image
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-# Install any needed packages specified in requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
+# Use the project virtualenv and avoid hardlink warnings across layers
+ENV UV_LINK_MODE=copy
+ENV PATH="/app/.venv/bin:$PATH"
+
+# Install dependencies first (cached unless pyproject.toml/uv.lock change)
+COPY pyproject.toml uv.lock ./
+RUN uv sync --locked --no-install-project
 
 # Copy the current directory contents into the container at /app
 COPY . .
 
 # Run tests; the build will fail if tests fail
-RUN python -m pytest test_main.py
+RUN uv run --locked pytest test_main.py
 
 # Make port 8000 available to the world outside this container
 EXPOSE 8000
 
 # Run main.py when the container launches
-CMD ["python", "main.py"]
+CMD ["uv", "run", "--locked", "--no-dev", "python", "main.py"]

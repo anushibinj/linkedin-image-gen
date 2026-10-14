@@ -194,19 +194,16 @@ def draw_circular_profile(img, path_or_image, pos, size):
     logger.debug("Falling back to placeholder circle for profile picture")
     draw.ellipse((x, y, x + size, y + size), fill=(200, 200, 200))
 
-def ios_messages_theme_1(request):
-    logger.info("Generating image with theme: ios-messages-1")
+def _ios_messages_theme(request, theme_name, colors):
+    logger.info(f"Generating image with theme: {theme_name}")
     width, height = SIZE, SIZE
-    logger.debug(f"Creating canvas of size {width}x{height} (Black background)")
-    img = Image.new("RGB", (width, height), (0, 0, 0))
+    logger.debug(f"Creating canvas of size {width}x{height} (background: {colors['background']})")
+    img = Image.new("RGB", (width, height), colors["background"])
     draw = ImageDraw.Draw(img)
     margin = 30 * SCALE_FACTOR
     safe_width = width - (margin * 2)
     bubble_max_width = int(safe_width * 0.7)
     profile_size = 35 * SCALE_FACTOR
-    
-    ios_blue = (0, 122, 255)
-    ios_dark_grey = (38, 38, 41)
     
     # 1. Header (Receiver Name)
     if request.header:
@@ -214,7 +211,7 @@ def ios_messages_theme_1(request):
         header_font = get_font(18 * SCALE_FACTOR)
         bbox = draw.textbbox((0, 0), request.header, font=header_font)
         h_w = bbox[2] - bbox[0]
-        draw.text(((width - h_w) // 2, margin), request.header, font=header_font, fill=(255, 255, 255))
+        draw.text(((width - h_w) // 2, margin), request.header, font=header_font, fill=colors["header_text"])
     
     current_y = margin + 50 * SCALE_FACTOR
     content_font = get_font(20 * SCALE_FACTOR)
@@ -233,9 +230,9 @@ def ios_messages_theme_1(request):
         
         draw.rounded_rectangle(
             (bubble_x, current_y, bubble_x + bubble_w, current_y + bubble_h),
-            radius=15 * SCALE_FACTOR, fill=ios_blue
+            radius=15 * SCALE_FACTOR, fill=colors["sender_bubble"]
         )
-        draw.multiline_text((bubble_x + 15 * SCALE_FACTOR, current_y + 10 * SCALE_FACTOR), wrapped_text, font=content_font, fill=(255, 255, 255))
+        draw.multiline_text((bubble_x + 15 * SCALE_FACTOR, current_y + 10 * SCALE_FACTOR), wrapped_text, font=content_font, fill=colors["sender_text"])
         
         draw_circular_profile(img, "profile.png", (width - margin - profile_size, current_y + bubble_h - profile_size), profile_size)
         current_y += bubble_h + 30 * SCALE_FACTOR
@@ -254,9 +251,9 @@ def ios_messages_theme_1(request):
         
         draw.rounded_rectangle(
             (bubble_x, current_y, bubble_x + bubble_w, current_y + bubble_h),
-            radius=15 * SCALE_FACTOR, fill=ios_dark_grey
+            radius=15 * SCALE_FACTOR, fill=colors["receiver_bubble"]
         )
-        draw.multiline_text((bubble_x + 15 * SCALE_FACTOR, current_y + 10 * SCALE_FACTOR), wrapped_text, font=content_font, fill=(255, 255, 255))
+        draw.multiline_text((bubble_x + 15 * SCALE_FACTOR, current_y + 10 * SCALE_FACTOR), wrapped_text, font=content_font, fill=colors["receiver_text"])
         
         logger.info("Fetching receiver profile picture")
         receiver_img = generate_random_profile_picture()
@@ -273,7 +270,20 @@ def ios_messages_theme_1(request):
         bbox = draw.textbbox((0, 0), request.footer, font=footer_font)
         f_w = bbox[2] - bbox[0]
         f_h = bbox[3] - bbox[1]
-        draw.text((width - margin - f_w, height - margin - f_h), request.footer, font=footer_font, fill=(113, 118, 123))
+        draw.text((width - margin - f_w, height - margin - f_h), request.footer, font=footer_font, fill=colors["footer_text"])
 
-    logger.info("Finished generating ios-messages-1 image")
+    logger.info(f"Finished generating {theme_name} image")
     return img
+
+
+def ios_messages_theme_1(request):
+    """iOS Messages, dark mode."""
+    return _ios_messages_theme(request, "ios-messages-1", {
+        "background": (0, 0, 0),
+        "header_text": (255, 255, 255),
+        "sender_bubble": (0, 122, 255),
+        "sender_text": (255, 255, 255),
+        "receiver_bubble": (38, 38, 41),
+        "receiver_text": (255, 255, 255),
+        "footer_text": (113, 118, 123),
+    })

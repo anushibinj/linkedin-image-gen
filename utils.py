@@ -168,13 +168,51 @@ def _rounded_mask(size, box, radius, supersample=4):
 def _scale_alpha(mask, alpha: int):
     return mask.point(lambda v: v * alpha // 255)
 
+def _tail_mask(size, box, side, unit, supersample=4):
+    """iMessage-style bubble tail curling out of the bottom `side` ("left"/"right") corner."""
+    x0, y0, x1, y1 = box
+    edge, direction = (x1, 1) if side == "right" else (x0, -1)
+
+    def point(dx, dy):
+        return ((edge + direction * dx * unit) * supersample, (y1 + dy * unit) * supersample)
+
+    def curve(start, control, end, steps=14):
+        pts = []
+        for i in range(steps + 1):
+            t = i / steps
+            pts.append(point(
+                (1 - t) ** 2 * start[0] + 2 * (1 - t) * t * control[0] + t ** 2 * end[0],
+                (1 - t) ** 2 * start[1] + 2 * (1 - t) * t * control[1] + t ** 2 * end[1],
+            ))
+        return pts
+
+    outline = curve((-4, -16), (0, -4), (6, 0)) + curve((6, 0), (-4, -1), (-14, 0)) + [point(-14, -16)]
+    w, h = size
+    mask = Image.new("L", (w * supersample, h * supersample), 0)
+    ImageDraw.Draw(mask).polygon(outline, fill=255)
+    return mask.resize((w, h), Image.LANCZOS)
+
+def _shape_mask(size, box, radius, tail=None, tail_unit=2):
+    mask = _rounded_mask(size, box, radius)
+    if tail:
+        mask = ImageChops.lighter(mask, _tail_mask(size, box, tail, tail_unit))
+    return mask
+
+def _edge_falloff(mask, width):
+    """Soft 0-255 map that is strongest along the inside of the shape's edge, fading over `width` px."""
+    outside = ImageChops.invert(mask).filter(ImageFilter.GaussianBlur(width))
+    return ImageChops.multiply(outside, mask).point(lambda v: min(255, v * 2))
+
 def draw_glass(img, box, radius, tint, border=(255, 255, 255, 160), border_width=2,
-               highlight=70, shadow=(0, 0, 0, 40), shadow_blur=16, shadow_offset=8, backdrop_blur=12):
+               highlight=70, shadow=(0, 0, 0, 40), shadow_blur=16, shadow_offset=8, backdrop_blur=12,
+               glows=(), tail=None, tail_unit=2):
     """
     Composite a frosted-glass rounded rectangle onto an RGBA image, in place.
 
     Layers, bottom to top: soft drop shadow, blurred backdrop, translucent tint,
-    a top-down white sheen, and a thin light rim. `tint`, `border` and `shadow` are RGBA.
+    a top-down white sheen, soft inner `glows` (a list of (RGBA, width_px)) and a thin light rim.
+    `tint`, `border` and `shadow` are RGBA. `tail` ("left"/"right") adds a chat-bubble tail at
+    the bottom corner on that side, `tail_unit` px being the tail's size unit.
     """
     x0, y0, x1, y1 = [int(round(c)) for c in box]
     pad = shadow_blur * 3 + shadow_offset
@@ -183,11 +221,12 @@ def draw_glass(img, box, radius, tint, border=(255, 255, 255, 160), border_width
     size = (rx1 - rx0, ry1 - ry0)
     local = (x0 - rx0, y0 - ry0, x1 - rx0, y1 - ry0)
 
-    mask = _rounded_mask(size, local, radius)
+    mask = _shape_mask(size, local, radius, tail, tail_unit)
     original = img.crop((rx0, ry0, rx1, ry1))
 
     # Shadow, then swap the glass area for the blurred backdrop so the shadow doesn't show through it
-    shadow_mask = _rounded_mask(size, (local[0], local[1] + shadow_offset, local[2], local[3] + shadow_offset), radius)
+    shadow_mask = _shape_mask(size, (local[0], local[1] + shadow_offset, local[2], local[3] + shadow_offset),
+                              radius, tail, tail_unit)
     shadow_mask = _scale_alpha(shadow_mask.filter(ImageFilter.GaussianBlur(shadow_blur)), shadow[3])
     shadow_layer = Image.new("RGBA", size, shadow[:3] + (0,))
     shadow_layer.putalpha(shadow_mask)
@@ -207,9 +246,18 @@ def draw_glass(img, box, radius, tint, border=(255, 255, 255, 160), border_width
     sheen_layer.putalpha(_scale_alpha(ImageChops.multiply(sheen_full, mask), highlight))
     region = Image.alpha_composite(region, sheen_layer)
 
+    for glow_color, glow_width in glows:
+        glow_layer = Image.new("RGBA", size, glow_color[:3] + (0,))
+        glow_layer.putalpha(_scale_alpha(_edge_falloff(mask, glow_width), glow_color[3]))
+        region = Image.alpha_composite(region, glow_layer)
+
     # Rim: the mask minus an inset copy of itself
-    inner = _rounded_mask(size, (local[0] + border_width, local[1] + border_width,
-                                 local[2] - border_width, local[3] - border_width), radius - border_width)
+    if tail:
+        inner = _edge_falloff(mask, border_width).point(lambda v: 255 if v > 200 else v * 255 // 200).point(lambda v: 255 - v)
+        inner = ImageChops.multiply(inner, mask)
+    else:
+        inner = _rounded_mask(size, (local[0] + border_width, local[1] + border_width,
+                                     local[2] - border_width, local[3] - border_width), radius - border_width)
     rim_layer = Image.new("RGBA", size, border[:3] + (0,))
     rim_layer.putalpha(_scale_alpha(ImageChops.subtract(mask, inner), border[3]))
     region = Image.alpha_composite(region, rim_layer)

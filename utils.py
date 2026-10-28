@@ -63,11 +63,11 @@ def generate_random_profile_picture():
 
 FONT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fonts")
 
-def get_font(size: int, weight: str = None):
+def get_font(size: int, weight: str = "regular"):
     """
-    Load a font at `size`. With `weight` ("regular", "medium" or "semibold") the bundled Inter
-    font (a close open-source match for Apple's SF Pro) is used; otherwise, or if it can't be
-    loaded, a standard system font is tried, falling back to the default font.
+    Load the bundled Inter font (a close open-source match for Apple's SF Pro) at `size`, in
+    `weight` ("regular", "medium" or "semibold"). If it can't be loaded, a standard system font
+    is tried, falling back to the default font.
     """
     if weight:
         path = os.path.join(FONT_DIR, f"Inter-{weight.capitalize() if weight != 'semibold' else 'SemiBold'}.ttf")
@@ -113,7 +113,7 @@ def wrap_text(text: str, font: ImageFont.FreeTypeFont, max_width: int):
     logger.debug(f"Text wrapped into {len(lines)} lines")
     return result
 
-def get_multiline_layout(draw: ImageDraw, text: str, max_width: int, max_height: int, initial_size: int):
+def get_multiline_layout(draw: ImageDraw, text: str, max_width: int, max_height: int, initial_size: int, weight: str = "regular"):
     """
     Finds the best font size and wrapped text combination.
     Prioritizes wrapping at the initial size. Shrinks only if max_height is exceeded.
@@ -121,7 +121,7 @@ def get_multiline_layout(draw: ImageDraw, text: str, max_width: int, max_height:
     logger.debug(f"Calculating layout for text: '{text[:20]}...' initial_size: {initial_size}")
     size = initial_size
     while size >= 10:
-        font = get_font(size)
+        font = get_font(size, weight)
         wrapped_text = wrap_text(text, font, max_width)
         bbox = draw.multiline_textbbox((0, 0), wrapped_text, font=font, align="center")
         h = bbox[3] - bbox[1]
@@ -132,7 +132,7 @@ def get_multiline_layout(draw: ImageDraw, text: str, max_width: int, max_height:
         size -= 4
     
     logger.warning("Could not fit text within max_height even at small size. Using minimum size 10.")
-    font = get_font(10)
+    font = get_font(10, weight)
     wrapped_text = wrap_text(text, font, max_width)
     bbox = draw.multiline_textbbox((0, 0), wrapped_text, font=font, align="center")
     return wrapped_text, font, bbox[2]-bbox[0], bbox[3]-bbox[1]

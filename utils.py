@@ -63,18 +63,20 @@ def generate_random_profile_picture():
 
 FONT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fonts")
 
-def get_font(size: int, weight: str = "regular"):
+def get_font(size: int, weight: str = "regular", display: bool = False):
     """
     Load the bundled Inter font (a close open-source match for Apple's SF Pro) at `size`, in
-    `weight` ("regular", "medium" or "semibold"). If it can't be loaded, a standard system font
-    is tried, falling back to the default font.
+    `weight` ("regular", "medium" or "semibold"). `display` picks Inter Display, the cut with
+    tighter spacing meant for larger text. If it can't be loaded, a standard system font is
+    tried, falling back to the default font.
     """
-    if weight:
-        path = os.path.join(FONT_DIR, f"Inter-{weight.capitalize() if weight != 'semibold' else 'SemiBold'}.ttf")
-        try:
-            return ImageFont.truetype(path, size)
-        except OSError:
-            logger.warning(f"Could not load bundled font {path}, using system fonts")
+    family = "InterDisplay" if display else "Inter"
+    name = "SemiBold" if weight == "semibold" else weight.capitalize()
+    path = os.path.join(FONT_DIR, f"{family}-{name}.ttf")
+    try:
+        return ImageFont.truetype(path, size)
+    except OSError:
+        logger.warning(f"Could not load bundled font {path}, using system fonts")
     font_names = [
         "arial.ttf", 
         "DejaVuSans.ttf", 

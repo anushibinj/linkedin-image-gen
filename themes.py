@@ -235,12 +235,12 @@ def _ios_messages_theme(request, theme_name, colors):
     current_y = margin + 20 * SCALE_FACTOR
     if request.header:
         logger.debug(f"Drawing header (receiver name): {request.header}")
-        header_font = get_font(18 * SCALE_FACTOR)
+        header_font = get_font(18 * SCALE_FACTOR, "semibold")
         header_box = _text_pill(img, request.header, header_font, width / 2, pill_gap,
                                 colors["header_text"], colors["pill"], 18 * SCALE_FACTOR, 9 * SCALE_FACTOR)
         current_y = header_box[3] + 30 * SCALE_FACTOR
 
-    content_font = get_font(20 * SCALE_FACTOR)
+    content_font = get_font(20 * SCALE_FACTOR, "regular")
 
     def draw_bubble(text, x, y, fill, text_fill):
         wrapped_text = wrap_text(text, content_font, bubble_max_width - 30 * SCALE_FACTOR)
@@ -280,7 +280,7 @@ def _ios_messages_theme(request, theme_name, colors):
     # 4. Footer
     if request.footer:
         logger.debug(f"Drawing footer: {request.footer}")
-        footer_font = get_font(12 * SCALE_FACTOR)
+        footer_font = get_font(12 * SCALE_FACTOR, "medium")
         pad_x, pad_y = 14 * SCALE_FACTOR, 7 * SCALE_FACTOR
         bbox = draw.textbbox((0, 0), request.footer, font=footer_font)
         pill_w, pill_h = bbox[2] - bbox[0] + pad_x * 2, bbox[3] - bbox[1] + pad_y * 2

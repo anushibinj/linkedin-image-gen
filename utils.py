@@ -3,6 +3,7 @@ import io
 import httpx
 import time
 import logging
+import os
 from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont
 
 # Configure logging
@@ -60,8 +61,20 @@ def generate_random_profile_picture():
     logger.error("Failed to fetch random profile picture after 3 attempts.")
     return None
 
-def get_font(size: int):
-    """Attempt to load a standard font, fallback to default if not found."""
+FONT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fonts")
+
+def get_font(size: int, weight: str = None):
+    """
+    Load a font at `size`. With `weight` ("regular", "medium" or "semibold") the bundled Inter
+    font (a close open-source match for Apple's SF Pro) is used; otherwise, or if it can't be
+    loaded, a standard system font is tried, falling back to the default font.
+    """
+    if weight:
+        path = os.path.join(FONT_DIR, f"Inter-{weight.capitalize() if weight != 'semibold' else 'SemiBold'}.ttf")
+        try:
+            return ImageFont.truetype(path, size)
+        except OSError:
+            logger.warning(f"Could not load bundled font {path}, using system fonts")
     font_names = [
         "arial.ttf", 
         "DejaVuSans.ttf", 

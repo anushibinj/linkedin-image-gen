@@ -24,7 +24,7 @@ def linkedin_theme_1(request):
     title_data = None
     if request.title:
         logger.debug("Calculating layout for title")
-        title_data = get_multiline_layout(draw, request.title, safe_width, 240 * SCALE_FACTOR, 50 * SCALE_FACTOR)
+        title_data = get_multiline_layout(draw, request.title, safe_width, 240 * SCALE_FACTOR, 50 * SCALE_FACTOR, "semibold")
     
     sub_data = None
     if request.subtitle:
@@ -47,7 +47,7 @@ def linkedin_theme_1(request):
     # 4. Draw Header
     if request.header:
         logger.debug(f"Drawing header: {request.header}")
-        header_font = get_font(14 * SCALE_FACTOR)
+        header_font = get_font(14 * SCALE_FACTOR, "semibold")
         header_text = wrap_text(request.header, header_font, safe_width // 2)
         draw.multiline_text((margin, margin), header_text, font=header_font, fill=text_color)
         
@@ -82,7 +82,7 @@ def linkedin_theme_1(request):
     # 7. Draw Footer
     if request.footer:
         logger.debug(f"Drawing footer: {request.footer}")
-        footer_font = get_font(14 * SCALE_FACTOR)
+        footer_font = get_font(14 * SCALE_FACTOR, "medium")
         wrapped_footer = wrap_text(request.footer, footer_font, safe_width // 2)
         bbox = draw.multiline_textbbox((0, 0), wrapped_footer, font=footer_font, align="right")
         f_w = bbox[2] - bbox[0]
@@ -115,7 +115,7 @@ def twitter_theme_1(request):
         
     # 2. Header Row: Name, Verified Tick, Handle
     logger.debug("Drawing header row (name, tick, handle)")
-    name_font = get_font(20 * SCALE_FACTOR)
+    name_font = get_font(20 * SCALE_FACTOR, "semibold")
     handle_font = get_font(18 * SCALE_FACTOR)
     current_x = profile_x + profile_pic_size + 15 * SCALE_FACTOR
     text_base_y = profile_y + (profile_pic_size // 2) - 10 * SCALE_FACTOR

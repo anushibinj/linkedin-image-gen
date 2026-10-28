@@ -3,7 +3,7 @@ import io
 import httpx
 import time
 import logging
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -139,3 +139,64 @@ def create_gradient(width: int, height: int):
     mask = mask.resize((width, height), resample=Image.BILINEAR)
     base.paste(top, (0, 0), mask)
     return base
+
+
+def _rounded_mask(size, box, radius, supersample=4):
+    """Anti-aliased rounded-rectangle mask (radius >= half the shorter side gives a pill/circle)."""
+    w, h = size
+    mask = Image.new("L", (w * supersample, h * supersample), 0)
+    ImageDraw.Draw(mask).rounded_rectangle(
+        [c * supersample for c in box], radius=max(radius, 0) * supersample, fill=255
+    )
+    return mask.resize((w, h), Image.LANCZOS)
+
+def _scale_alpha(mask, alpha: int):
+    return mask.point(lambda v: v * alpha // 255)
+
+def draw_glass(img, box, radius, tint, border=(255, 255, 255, 160), border_width=2,
+               highlight=70, shadow=(0, 0, 0, 40), shadow_blur=16, shadow_offset=8, backdrop_blur=12):
+    """
+    Composite a frosted-glass rounded rectangle onto an RGBA image, in place.
+
+    Layers, bottom to top: soft drop shadow, blurred backdrop, translucent tint,
+    a top-down white sheen, and a thin light rim. `tint`, `border` and `shadow` are RGBA.
+    """
+    x0, y0, x1, y1 = [int(round(c)) for c in box]
+    pad = shadow_blur * 3 + shadow_offset
+    rx0, ry0 = max(0, x0 - pad), max(0, y0 - pad)
+    rx1, ry1 = min(img.width, x1 + pad), min(img.height, y1 + pad)
+    size = (rx1 - rx0, ry1 - ry0)
+    local = (x0 - rx0, y0 - ry0, x1 - rx0, y1 - ry0)
+
+    mask = _rounded_mask(size, local, radius)
+    original = img.crop((rx0, ry0, rx1, ry1))
+
+    # Shadow, then swap the glass area for the blurred backdrop so the shadow doesn't show through it
+    shadow_mask = _rounded_mask(size, (local[0], local[1] + shadow_offset, local[2], local[3] + shadow_offset), radius)
+    shadow_mask = _scale_alpha(shadow_mask.filter(ImageFilter.GaussianBlur(shadow_blur)), shadow[3])
+    shadow_layer = Image.new("RGBA", size, shadow[:3] + (0,))
+    shadow_layer.putalpha(shadow_mask)
+    region = Image.alpha_composite(original, shadow_layer)
+    region.paste(original.filter(ImageFilter.GaussianBlur(backdrop_blur)), (0, 0), mask)
+
+    tint_layer = Image.new("RGBA", size, tint[:3] + (0,))
+    tint_layer.putalpha(_scale_alpha(mask, tint[3]))
+    region = Image.alpha_composite(region, tint_layer)
+
+    # Sheen: white fading from the top edge to about half way down
+    box_w, box_h = local[2] - local[0], local[3] - local[1]
+    sheen = Image.linear_gradient("L").transpose(Image.FLIP_TOP_BOTTOM).resize((box_w, max(1, box_h // 2)))
+    sheen_full = Image.new("L", size, 0)
+    sheen_full.paste(sheen, (local[0], local[1]))
+    sheen_layer = Image.new("RGBA", size, (255, 255, 255, 0))
+    sheen_layer.putalpha(_scale_alpha(ImageChops.multiply(sheen_full, mask), highlight))
+    region = Image.alpha_composite(region, sheen_layer)
+
+    # Rim: the mask minus an inset copy of itself
+    inner = _rounded_mask(size, (local[0] + border_width, local[1] + border_width,
+                                 local[2] - border_width, local[3] - border_width), radius - border_width)
+    rim_layer = Image.new("RGBA", size, border[:3] + (0,))
+    rim_layer.putalpha(_scale_alpha(ImageChops.subtract(mask, inner), border[3]))
+    region = Image.alpha_composite(region, rim_layer)
+
+    img.paste(region, (rx0, ry0))

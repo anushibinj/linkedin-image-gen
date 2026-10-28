@@ -1,7 +1,7 @@
 import os
 import logging
 from PIL import Image, ImageDraw, ImageOps
-from utils import create_gradient, get_font, wrap_text, get_multiline_layout, generate_random_profile_picture
+from utils import draw_glass, create_gradient, get_font, wrap_text, get_multiline_layout, generate_random_profile_picture
 
 logger = logging.getLogger(__name__)
 
@@ -194,98 +194,121 @@ def draw_circular_profile(img, path_or_image, pos, size):
     logger.debug("Falling back to placeholder circle for profile picture")
     draw.ellipse((x, y, x + size, y + size), fill=(200, 200, 200))
 
+def _text_pill(img, text, font, center_x, top, fill, glass, padding_x, padding_y):
+    """Draw `text` on a glass pill whose top edge is at `top`. Returns the pill's box."""
+    draw = ImageDraw.Draw(img)
+    bbox = draw.textbbox((0, 0), text, font=font)
+    t_w, t_h = bbox[2] - bbox[0], bbox[3] - bbox[1]
+    left = center_x - t_w / 2 - padding_x
+    box = (left, top, left + t_w + padding_x * 2, top + t_h + padding_y * 2)
+    draw_glass(img, box, (box[3] - box[1]) / 2, **glass)
+    draw.text((left + padding_x - bbox[0], top + padding_y - bbox[1]), text, font=font, fill=fill)
+    return box
+
+
 def _ios_messages_theme(request, theme_name, colors):
     logger.info(f"Generating image with theme: {theme_name}")
     width, height = SIZE, SIZE
     logger.debug(f"Creating canvas of size {width}x{height} (background: {colors['background']})")
-    img = Image.new("RGB", (width, height), colors["background"])
+    img = Image.new("RGBA", (width, height), colors["background"] + (255,))
+
+    # A large tinted glass panel sits on the background and holds everything else
+    panel_inset = 20 * SCALE_FACTOR
+    draw_glass(img, (panel_inset, panel_inset, width - panel_inset, height - panel_inset),
+               radius=28 * SCALE_FACTOR, **colors["panel"])
     draw = ImageDraw.Draw(img)
-    margin = 30 * SCALE_FACTOR
+
+    margin = panel_inset + 25 * SCALE_FACTOR
     safe_width = width - (margin * 2)
     bubble_max_width = int(safe_width * 0.7)
     profile_size = 35 * SCALE_FACTOR
-    
+    ring = 3 * SCALE_FACTOR
+    pill_gap = panel_inset + 18 * SCALE_FACTOR
+
+    def draw_avatar(source, xy):
+        x, y = xy
+        draw_glass(img, (x - ring, y - ring, x + profile_size + ring, y + profile_size + ring),
+                   radius=profile_size, **colors["avatar_ring"])
+        draw_circular_profile(img, source, xy, profile_size)
+
     # 1. Header (Receiver Name)
+    current_y = margin + 20 * SCALE_FACTOR
     if request.header:
         logger.debug(f"Drawing header (receiver name): {request.header}")
         header_font = get_font(18 * SCALE_FACTOR)
-        bbox = draw.textbbox((0, 0), request.header, font=header_font)
-        h_w = bbox[2] - bbox[0]
-        draw.text(((width - h_w) // 2, margin), request.header, font=header_font, fill=colors["header_text"])
-    
-    current_y = margin + 50 * SCALE_FACTOR
+        header_box = _text_pill(img, request.header, header_font, width / 2, pill_gap,
+                                colors["header_text"], colors["pill"], 18 * SCALE_FACTOR, 9 * SCALE_FACTOR)
+        current_y = header_box[3] + 30 * SCALE_FACTOR
+
     content_font = get_font(20 * SCALE_FACTOR)
-    
+
+    def draw_bubble(text, x, y, fill, text_fill):
+        wrapped_text = wrap_text(text, content_font, bubble_max_width - 30 * SCALE_FACTOR)
+        bbox = draw.multiline_textbbox((0, 0), wrapped_text, font=content_font)
+        bubble_w = bbox[2] - bbox[0] + 30 * SCALE_FACTOR
+        bubble_h = bbox[3] - bbox[1] + 30 * SCALE_FACTOR
+        bubble_x = x(bubble_w)
+        draw_glass(img, (bubble_x, y, bubble_x + bubble_w, y + bubble_h), radius=18 * SCALE_FACTOR, **fill)
+        draw.multiline_text((bubble_x + 15 * SCALE_FACTOR, y + 10 * SCALE_FACTOR), wrapped_text,
+                            font=content_font, fill=text_fill)
+        return bubble_h
+
     # 2. Sender Message (Title) -> Right Aligned
     if request.title:
         logger.debug(f"Drawing sender message bubble: {request.title[:20]}...")
-        wrapped_text = wrap_text(request.title, content_font, bubble_max_width - 30 * SCALE_FACTOR)
-        bbox = draw.multiline_textbbox((0, 0), wrapped_text, font=content_font)
-        text_w = bbox[2] - bbox[0]
-        text_h = bbox[3] - bbox[1]
-        
-        bubble_w = text_w + 30 * SCALE_FACTOR
-        bubble_h = text_h + 30 * SCALE_FACTOR
-        bubble_x = width - margin - profile_size - 10 * SCALE_FACTOR - bubble_w
-        
-        draw.rounded_rectangle(
-            (bubble_x, current_y, bubble_x + bubble_w, current_y + bubble_h),
-            radius=15 * SCALE_FACTOR, fill=colors["sender_bubble"]
-        )
-        draw.multiline_text((bubble_x + 15 * SCALE_FACTOR, current_y + 10 * SCALE_FACTOR), wrapped_text, font=content_font, fill=colors["sender_text"])
-        
-        draw_circular_profile(img, "profile.png", (width - margin - profile_size, current_y + bubble_h - profile_size), profile_size)
+        bubble_h = draw_bubble(request.title,
+                               lambda w: width - margin - profile_size - 10 * SCALE_FACTOR - w,
+                               current_y, colors["sender_bubble"], colors["sender_text"])
+        draw_avatar("profile.png", (width - margin - profile_size, current_y + bubble_h - profile_size))
         current_y += bubble_h + 30 * SCALE_FACTOR
-        
+
     # 3. Receiver Message (Subtitle) -> Left Aligned
     if request.subtitle:
         logger.debug(f"Drawing receiver message bubble: {request.subtitle[:20]}...")
-        wrapped_text = wrap_text(request.subtitle, content_font, bubble_max_width - 30 * SCALE_FACTOR)
-        bbox = draw.multiline_textbbox((0, 0), wrapped_text, font=content_font)
-        text_w = bbox[2] - bbox[0]
-        text_h = bbox[3] - bbox[1]
-        
-        bubble_w = text_w + 30 * SCALE_FACTOR
-        bubble_h = text_h + 30 * SCALE_FACTOR
-        bubble_x = margin + profile_size + 10 * SCALE_FACTOR
-        
-        draw.rounded_rectangle(
-            (bubble_x, current_y, bubble_x + bubble_w, current_y + bubble_h),
-            radius=15 * SCALE_FACTOR, fill=colors["receiver_bubble"]
-        )
-        draw.multiline_text((bubble_x + 15 * SCALE_FACTOR, current_y + 10 * SCALE_FACTOR), wrapped_text, font=content_font, fill=colors["receiver_text"])
-        
+        bubble_h = draw_bubble(request.subtitle,
+                               lambda w: margin + profile_size + 10 * SCALE_FACTOR,
+                               current_y, colors["receiver_bubble"], colors["receiver_text"])
+
         logger.info("Fetching receiver profile picture")
         receiver_img = generate_random_profile_picture()
         if receiver_img is None:
             logger.info("Falling back to profile_receiver.png for receiver profile")
             receiver_img = "profile_receiver.png"
-            
-        draw_circular_profile(img, receiver_img, (margin, current_y + bubble_h - profile_size), profile_size)
+
+        draw_avatar(receiver_img, (margin, current_y + bubble_h - profile_size))
 
     # 4. Footer
     if request.footer:
         logger.debug(f"Drawing footer: {request.footer}")
         footer_font = get_font(12 * SCALE_FACTOR)
+        pad_x, pad_y = 14 * SCALE_FACTOR, 7 * SCALE_FACTOR
         bbox = draw.textbbox((0, 0), request.footer, font=footer_font)
-        f_w = bbox[2] - bbox[0]
-        f_h = bbox[3] - bbox[1]
-        draw.text((width - margin - f_w, height - margin - f_h), request.footer, font=footer_font, fill=colors["footer_text"])
+        pill_w, pill_h = bbox[2] - bbox[0] + pad_x * 2, bbox[3] - bbox[1] + pad_y * 2
+        _text_pill(img, request.footer, footer_font, width - margin - pill_w / 2,
+                   height - pill_gap - pill_h, colors["footer_text"], colors["pill"], pad_x, pad_y)
 
     logger.info(f"Finished generating {theme_name} image")
-    return img
+    return img.convert("RGB")
 
 
 def ios_messages_theme_1(request):
     """iOS Messages, dark mode."""
     return _ios_messages_theme(request, "ios-messages-1", {
         "background": (0, 0, 0),
+        "panel": {"tint": (90, 90, 98, 90), "border": (255, 255, 255, 50),
+                  "highlight": 22, "shadow": (0, 0, 0, 0)},
+        "pill": {"tint": (120, 120, 128, 80), "border": (255, 255, 255, 60),
+                 "highlight": 30, "shadow": (0, 0, 0, 80), "shadow_blur": 8, "shadow_offset": 4},
+        "avatar_ring": {"tint": (255, 255, 255, 60), "border": (255, 255, 255, 90), "border_width": 2,
+                        "highlight": 40, "shadow": (0, 0, 0, 90), "shadow_blur": 8, "shadow_offset": 4},
         "header_text": (255, 255, 255),
-        "sender_bubble": (0, 122, 255),
+        "sender_bubble": {"tint": (0, 122, 255, 200), "border": (255, 255, 255, 90),
+                          "highlight": 60, "shadow": (0, 60, 160, 110)},
         "sender_text": (255, 255, 255),
-        "receiver_bubble": (38, 38, 41),
+        "receiver_bubble": {"tint": (150, 150, 160, 80), "border": (255, 255, 255, 70),
+                            "highlight": 40, "shadow": (0, 0, 0, 100)},
         "receiver_text": (255, 255, 255),
-        "footer_text": (113, 118, 123),
+        "footer_text": (170, 175, 180),
     })
 
 
@@ -293,10 +316,18 @@ def ios_messages_theme_2_light_mode(request):
     """iOS Messages, light mode."""
     return _ios_messages_theme(request, "ios-messages-2-light-mode", {
         "background": (255, 255, 255),      # #FFFFFF
+        "panel": {"tint": (205, 208, 216, 130), "border": (255, 255, 255, 230),
+                  "highlight": 90, "shadow": (40, 50, 80, 45), "shadow_blur": 20, "shadow_offset": 8},
+        "pill": {"tint": (255, 255, 255, 120), "border": (255, 255, 255, 230),
+                 "highlight": 80, "shadow": (40, 50, 80, 40), "shadow_blur": 8, "shadow_offset": 3},
+        "avatar_ring": {"tint": (255, 255, 255, 150), "border": (255, 255, 255, 240), "border_width": 2,
+                        "highlight": 90, "shadow": (40, 50, 80, 55), "shadow_blur": 8, "shadow_offset": 3},
         "header_text": (0, 0, 0),           # #000000
-        "sender_bubble": (65, 178, 251),    # #41B2FB
-        "sender_text": (203, 234, 254),     # #CBEAFE
-        "receiver_bubble": (233, 233, 234), # #E9E9EA
+        "sender_bubble": {"tint": (65, 178, 251, 190), "border": (255, 255, 255, 200),
+                          "highlight": 90, "shadow": (30, 120, 200, 80), "shadow_blur": 10, "shadow_offset": 4},
+        "sender_text": (255, 255, 255),
+        "receiver_bubble": {"tint": (255, 255, 255, 150), "border": (255, 255, 255, 230),
+                            "highlight": 90, "shadow": (40, 50, 80, 45), "shadow_blur": 10, "shadow_offset": 4},
         "receiver_text": (30, 30, 30),      # #1E1E1E
-        "footer_text": (183, 183, 185),     # #B7B7B9
+        "footer_text": (110, 112, 118),
     })

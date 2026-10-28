@@ -130,6 +130,9 @@ def test_generate_image_with_ios_light_theme():
     img = Image.open(io.BytesIO(response.content))
     assert img.size == (1024, 1024)
     assert img.convert("RGB").getpixel((5, 5)) == (255, 255, 255)
+    # Glass panel sits on the white background and is tinted light grey
+    r, g, b = img.convert("RGB").getpixel((512, 800))
+    assert max(r, g, b) < 250 and min(r, g, b) > 200
 
 def test_invalid_json():
     """Test that invalid JSON returns a 422 Unprocessable Entity."""

@@ -323,8 +323,8 @@ def ios_messages_theme_2_light_mode(request):
         "avatar_ring": {"tint": (255, 255, 255, 150), "border": (255, 255, 255, 240), "border_width": 2,
                         "highlight": 90, "shadow": (40, 50, 80, 55), "shadow_blur": 8, "shadow_offset": 3},
         "header_text": (0, 0, 0),           # #000000
-        "sender_bubble": {"tint": (65, 178, 251, 190), "border": (255, 255, 255, 200),
-                          "highlight": 90, "shadow": (30, 120, 200, 80), "shadow_blur": 10, "shadow_offset": 4},
+        "sender_bubble": {"tint": (0, 105, 235, 215), "border": (255, 255, 255, 200),
+                          "highlight": 90, "shadow": (0, 70, 180, 90), "shadow_blur": 10, "shadow_offset": 4},
         "sender_text": (255, 255, 255),
         "receiver_bubble": {"tint": (255, 255, 255, 150), "border": (255, 255, 255, 230),
                             "highlight": 90, "shadow": (40, 50, 80, 45), "shadow_blur": 10, "shadow_offset": 4},

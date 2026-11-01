@@ -249,11 +249,8 @@ def _ios_messages_theme(request, theme_name, colors):
         logger.info("Falling back to profile_receiver.png for receiver profile")
         receiver_img = "profile_receiver.png"
 
-    # 1. Header: receiver avatar with the name beneath it, as in Messages
-    header_avatar = 50 * S
-    top = panel_inset + 18 * S
-    draw_avatar(receiver_img, (width / 2 - header_avatar / 2, top), header_avatar)
-    current_y = top + header_avatar + ring + 8 * S
+    # 1. Header: the receiver's name in a glass pill with a chevron, as in Messages
+    current_y = panel_inset + 24 * S
     if request.header:
         logger.debug(f"Drawing header (receiver name): {request.header}")
         header_box = _text_pill(img, request.header, get_font(15 * S, "semibold", display=True), width / 2, current_y,

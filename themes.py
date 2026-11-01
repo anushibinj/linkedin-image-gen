@@ -1,5 +1,6 @@
 import os
 import logging
+from datetime import datetime
 from PIL import Image, ImageDraw, ImageOps
 from utils import draw_glass, create_gradient, get_font, wrap_text, get_multiline_layout, generate_random_profile_picture
 
@@ -259,7 +260,8 @@ def _ios_messages_theme(request, theme_name, colors):
     current_y += 22 * S
 
     # 2. Timestamp
-    day, clock = "Today", " 9:41 AM"
+    now = datetime.now()
+    day, clock = "Today", f" {now.hour % 12 or 12}:{now.minute:02d} {'AM' if now.hour < 12 else 'PM'}"
     day_w = draw.textlength(day, font=meta_font)
     total_w = day_w + draw.textlength(clock, font=get_font(11 * S, "regular"))
     ts_bbox = draw.textbbox((0, 0), day, font=meta_font)
